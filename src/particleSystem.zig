@@ -10,21 +10,25 @@ pub const FIRST_DRAWABLE_COL: usize = 7;
 pub const LAST_DRAWABLE_COL: usize = 86;
 
 pub const ParticleSystem = struct {
-    particles: [ROWS][COLS]particle.Particle,
+    particles: [ROWS * COLS]particle.Particle,
+    canvas: [ROWS][COLS]u8,
 
     pub fn init(seed: usize) ParticleSystem {
-        var tmp: [ROWS][COLS]particle.Particle = undefined;
+        var tmp: [ROWS * COLS]particle.Particle = undefined;
+        var canvas: [ROWS][COLS]u8 = undefined;
         var rand = std.rand.DefaultPrng.init(seed);
         const rng = rand.random();
         for (0..ROWS) |i| {
             for (0..COLS) |j| {
                 const _seed = rng.uintAtMost(usize, 255);
-                tmp[i][j] = particle.Particle.init(i, j, _seed, true); // make immutable
+                tmp[i * COLS + j] = particle.Particle.init(i, j, _seed, true);
+                canvas[i][j] = ' ';
             }
         }
 
         return ParticleSystem{
             .particles = tmp,
+            .canvas = canvas,
         };
     }
 
@@ -37,10 +41,10 @@ pub const ParticleSystem = struct {
             col = 0;
             for (s) |ch| {
                 if (ch != ' ') {
-                    self.particles[row][col].forceCharacter(ch);
+                    self.particles[(row * COLS) + col].forceCharacter(ch);
                 } else {
                     if (filter(row, col)) {
-                        self.particles[row][col].unfix();
+                        self.particles[(row * COLS) + col].unfix();
                     }
                 }
                 col += 1;
@@ -50,21 +54,29 @@ pub const ParticleSystem = struct {
     }
 
     pub fn updateAll(self: *ParticleSystem) void {
-        for (0..ROWS) |i| {
-            for (0..COLS) |j| {
-                self.particles[i][j].update();
-            }
+        for (&self.particles) |*p| {
+            p.update();
         }
     }
 
     pub fn renderAll(self: *ParticleSystem) !void {
         try output.stdout.print("\x1b[H", .{});
-        for (0..ROWS) |i| {
-            for (0..COLS) |j| {
-                try self.particles[i][j].render();
+
+        for (&self.particles) |*p| {
+            const row = p.getRow();
+            const col = p.getCol();
+            const ch = p.render();
+            self.canvas[row][col] = ch;
+            //std.log.debug("({d}, {d}) = {c}", .{ row, col, ch });
+        }
+
+        for (0..ROWS) |r| {
+            for (0..COLS) |c| {
+                try output.stdout.print("{c}", .{self.canvas[r][c]});
             }
             try output.stdout.print("\n", .{});
         }
+
         try output.flush();
     }
 

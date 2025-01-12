@@ -24,16 +24,16 @@ pub const Particle = struct {
         return Particle{ .row = _row, .col = _col, .drow = 0, .dcol = 0, .rowInit = _row, .colInit = _col, .value = 0, .rng = rng, .fixed = fixed, .ch = ' ' };
     }
 
-    pub fn render(self: *Particle) !void {
+    pub fn render(self: *Particle) u8 {
         if (self.fixed == false) {
             self.ch = map(self.value);
         }
-        try output.stdout.print("{c}", .{self.ch});
+        return self.ch;
     }
 
     pub fn update(self: *Particle) void {
         if (self.fixed == false) {
-            // do update position logic
+            //self.updatePosition();
 
             if (self.row == particleSystem.LAST_DRAWABLE_ROW) {
                 const f = self.rng.floatNorm(f64);
@@ -76,5 +76,13 @@ pub const Particle = struct {
         if (self.col < particleSystem.FIRST_DRAWABLE_COL or self.col > particleSystem.LAST_DRAWABLE_COL) {
             self.col = self.colInit;
         }
+    }
+
+    pub fn getRow(self: Particle) usize {
+        return @intFromFloat(self.row);
+    }
+
+    pub fn getCol(self: Particle) usize {
+        return @intFromFloat(self.col);
     }
 };

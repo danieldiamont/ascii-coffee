@@ -8,6 +8,11 @@ fn parseAscii(path: []const u8, buf: []u8) !void {
 
 pub fn main() !void {
 
+    // initially clear screen and reset cursor position
+    try output.stdout.print("\x1b[2J", .{});
+    try output.stdout.print("\x1b[H", .{});
+    try output.flush();
+
     // account for newlines
     var buffer: [particleSystem.ROWS * particleSystem.COLS + particleSystem.ROWS]u8 = undefined;
     try parseAscii("cup.txt", &buffer);
