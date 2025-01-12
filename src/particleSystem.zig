@@ -17,6 +17,7 @@ pub const ParticleSystem = struct {
     speed: f64,
     tick: usize,
     interval: usize,
+    rand: std.rand.DefaultPrng,
 
     pub fn init(seed: usize, speed: f64, alloc: std.mem.Allocator) ParticleSystem {
         const interval: usize = @intFromFloat(@abs(1.0 / speed));
@@ -28,6 +29,7 @@ pub const ParticleSystem = struct {
             .speed = speed,
             .tick = 0,
             .interval = interval,
+            .rand = std.rand.DefaultPrng.init(seed),
         };
     }
 
@@ -40,7 +42,7 @@ pub const ParticleSystem = struct {
             col = 0;
             for (s) |ch| {
                 if (ch != ' ') {
-                    var p = particle.Particle.init(row, col, self.speed, 0.0, 42);
+                    var p = particle.Particle.init(row, col, self.speed, 0.0, 42, 0.5);
                     p.forceCharacter(ch);
                     try self.particles.append(p);
                 }
@@ -70,14 +72,13 @@ pub const ParticleSystem = struct {
         }
 
         // spawn new particles
-        var rand = std.rand.DefaultPrng.init(self.seed);
-        const rng = rand.random();
+        const rng = self.rand.random();
 
         if (self.tick == 0) {
             for (FIRST_DRAWABLE_COL..LAST_DRAWABLE_COL) |col| {
                 const row = LAST_DRAWABLE_ROW;
-                const seed = rng.uintAtMost(usize, 100);
-                var p = particle.Particle.init(row, col, self.speed, 0.0, seed);
+                const seed = rng.uintAtMost(usize, 1024);
+                var p = particle.Particle.init(row, col, self.speed, 0.0, seed, 0.5);
                 p.unfix();
                 try self.particles.append(p);
             }
@@ -118,13 +119,6 @@ pub const ParticleSystem = struct {
         }
 
         try output.flush();
-    }
-
-    fn filterSpawnRow(row: usize, col: usize) bool {
-        if (row == LAST_DRAWABLE_ROW and col >= FIRST_DRAWABLE_COL and col < LAST_DRAWABLE_COL) {
-            return true;
-        }
-        return false;
     }
 
     fn checkOutOfBounds(p: particle.Particle) bool {

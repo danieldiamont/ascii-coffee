@@ -39,12 +39,12 @@ pub fn main() !void {
 
     const allocator = arena.allocator();
 
-    var ps = particleSystem.ParticleSystem.init(42, -0.5, allocator);
+    var ps = particleSystem.ParticleSystem.init(42, -0.25, allocator);
     try ps.withAsciiSeed(&buffer);
 
     while (!caught_signal) {
         try ps.updateAll();
         try ps.renderAll();
-        std.time.sleep(500_000_000);
+        std.time.sleep(100_000_000);
     }
 }

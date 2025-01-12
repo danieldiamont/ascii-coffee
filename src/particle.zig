@@ -11,6 +11,9 @@ pub const Particle = struct {
     ch: u8,
     rand: std.rand.DefaultPrng,
     fixed: bool,
+    tau: f64,
+    age: f64,
+    ageStep: f64,
 
     pub fn init(
         row: usize,
@@ -18,6 +21,7 @@ pub const Particle = struct {
         drow: f64,
         dcol: f64,
         seed: usize,
+        tau: f64,
     ) Particle {
         const _row: f64 = @floatFromInt(row);
         const _col: f64 = @floatFromInt(col);
@@ -31,6 +35,9 @@ pub const Particle = struct {
             .rand = std.rand.DefaultPrng.init(seed),
             .fixed = true,
             .ch = ' ',
+            .tau = tau,
+            .age = 1.0,
+            .ageStep = 0.03,
         };
     }
 
@@ -46,9 +53,11 @@ pub const Particle = struct {
         if (self.fixed == false) {
             const f = rng.floatNorm(f64);
             const biased = convolve(self.col, f);
-            self.value = biased;
-            //std.log.debug("self.value {d}", .{self.value});
+            const filtered = biased * self.tau + (1 - self.tau) * (self.value);
+            const ageAdjusted = filtered * self.age;
+            self.value = ageAdjusted;
             self.updatePosition();
+            self.age += self.ageStep;
         }
     }
 
@@ -65,19 +74,19 @@ pub const Particle = struct {
             return ' ';
         }
         if (f >= -2 and f < -1) {
-            return '{';
+            return '.';
         }
         if (f >= -1 and f < -0.5) {
-            return ' ';
+            return '{';
         }
         if (f >= -0.5 and f < 0.5) {
             return '.';
         }
         if (f >= 0.5 and f < 1) {
-            return ' ';
+            return '}';
         }
         if (f >= 1 and f < 2) {
-            return '}';
+            return '.';
         }
         return ' ';
     }
@@ -105,7 +114,7 @@ pub const Particle = struct {
         const range = (last - first) / 2.0;
         const midpoint = (first + last) / 2.0;
         const scaled: f64 = (col - midpoint) / range;
-        const biased = 4 * scaled + f;
+        const biased = 3 * scaled + f;
         return biased;
     }
 };
