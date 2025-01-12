@@ -8,7 +8,7 @@ pub const Particle = struct {
     drow: f64,
     dcol: f64,
     value: f64,
-    ch: u8,
+    ch: []const u8,
     rand: std.rand.DefaultPrng,
     fixed: bool,
     tau: f64,
@@ -34,14 +34,14 @@ pub const Particle = struct {
             .value = 0,
             .rand = std.rand.DefaultPrng.init(seed),
             .fixed = true,
-            .ch = ' ',
+            .ch = " ",
             .tau = tau,
             .age = 1.0,
             .ageStep = 0.03,
         };
     }
 
-    pub fn render(self: *Particle) u8 {
+    pub fn render(self: *Particle) []const u8 {
         if (self.fixed == false) {
             self.ch = map(self.value);
         }
@@ -65,30 +65,36 @@ pub const Particle = struct {
         self.fixed = false;
     }
 
-    pub fn forceCharacter(self: *Particle, ch: u8) void {
-        self.ch = ch;
+    pub fn forceCharacter(self: *Particle, ch: u8) !void {
+        self.ch = &[_]u8{ch};
     }
 
-    pub fn map(f: f64) u8 {
+    pub fn map(f: f64) []const u8 {
         if (f < -2) {
-            return ' ';
+            return " ";
         }
         if (f >= -2 and f < -1) {
-            return '.';
+            return "░";
         }
         if (f >= -1 and f < -0.5) {
-            return '{';
+            return "▒";
         }
-        if (f >= -0.5 and f < 0.5) {
-            return '.';
+        if (f >= -0.5 and f < -0.25) {
+            return "▓";
+        }
+        if (f >= -0.25 and f < 0.25) {
+            return "█";
+        }
+        if (f >= 0.25 and f < 0.5) {
+            return "▓";
         }
         if (f >= 0.5 and f < 1) {
-            return '}';
+            return "▒";
         }
         if (f >= 1 and f < 2) {
-            return '.';
+            return "░";
         }
-        return ' ';
+        return " ";
     }
 
     fn updatePosition(self: *Particle) void {

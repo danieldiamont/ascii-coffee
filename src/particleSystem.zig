@@ -12,7 +12,7 @@ pub const LAST_DRAWABLE_COL: usize = 86;
 
 pub const ParticleSystem = struct {
     particles: std.ArrayList(particle.Particle),
-    canvas: [ROWS][COLS]u8,
+    canvas: [ROWS][COLS][]const u8,
     seed: usize,
     speed: f64,
     tick: usize,
@@ -43,7 +43,7 @@ pub const ParticleSystem = struct {
             for (s) |ch| {
                 if (ch != ' ') {
                     var p = particle.Particle.init(row, col, self.speed, 0.0, 42, 0.5);
-                    p.forceCharacter(ch);
+                    try p.forceCharacter(ch);
                     try self.particles.append(p);
                 }
                 col += 1;
@@ -97,7 +97,7 @@ pub const ParticleSystem = struct {
         // clear canvas
         for (0..ROWS) |r| {
             for (0..COLS) |c| {
-                self.canvas[r][c] = ' ';
+                self.canvas[r][c] = " ";
             }
         }
 
@@ -107,7 +107,7 @@ pub const ParticleSystem = struct {
             const col = p.getCol();
             const ch = p.render();
             self.canvas[row][col] = ch;
-            //std.log.debug("({d}, {d}) = {c}", .{ row, col, ch });
+            std.log.debug("({d}, {d}) = {c}", .{ row, col, ch });
         }
 
         // display canvas
