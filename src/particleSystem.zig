@@ -5,6 +5,7 @@ const output = @import("output.zig");
 pub const ROWS: usize = 50;
 pub const COLS: usize = 100;
 
+pub const FIRST_DRAWABLE_ROW: usize = 1;
 pub const LAST_DRAWABLE_ROW: usize = 14;
 pub const FIRST_DRAWABLE_COL: usize = 7;
 pub const LAST_DRAWABLE_COL: usize = 86;
@@ -127,7 +128,7 @@ pub const ParticleSystem = struct {
     }
 
     fn checkOutOfBounds(p: particle.Particle) bool {
-        if (p.row < 0 or p.row > LAST_DRAWABLE_ROW) {
+        if (p.row < FIRST_DRAWABLE_ROW or p.row > LAST_DRAWABLE_ROW) {
             return true;
         }
         if (p.col < FIRST_DRAWABLE_COL or p.col > LAST_DRAWABLE_COL) {

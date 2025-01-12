@@ -49,7 +49,8 @@ pub const Particle = struct {
         const rng = self.rand.random();
         if (self.fixed == false) {
             const f = rng.floatNorm(f64);
-            self.value = f;
+            const biased = convolve(self.col, f);
+            self.value = biased;
             //std.log.debug("self.value {d}", .{self.value});
         }
         self.updatePosition();
@@ -65,15 +66,15 @@ pub const Particle = struct {
 
     pub fn map(f: f64) u8 {
         if (f < -2) {
-            return '{';
-        } else if (f >= -2 and f < -1) {
-            return '.';
-        } else if (f >= -1 and f < 1) {
             return ' ';
-        } else if (f >= 1 and f < 2) {
+        } else if (f >= -2 and f < -1) {
+            return '{';
+        } else if (f >= -1 and f < 1) {
             return '.';
-        } else {
+        } else if (f >= 1 and f < 2) {
             return '}';
+        } else {
+            return ' ';
         }
     }
 
@@ -92,5 +93,15 @@ pub const Particle = struct {
 
     pub fn getCol(self: Particle) usize {
         return @intFromFloat(self.col);
+    }
+
+    fn convolve(col: f64, f: f64) f64 {
+        const first: f64 = @floatFromInt(particleSystem.FIRST_DRAWABLE_COL);
+        const last: f64 = @floatFromInt(particleSystem.LAST_DRAWABLE_COL);
+        const range = (last - first) / 2.0;
+        const midpoint = (first + last) / 2.0;
+        const scaled: f64 = (col - midpoint) / range;
+        const biased = 4 * scaled + f;
+        return biased;
     }
 };
