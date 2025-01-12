@@ -5,7 +5,7 @@ const output = @import("output.zig");
 pub const ROWS: usize = 50;
 pub const COLS: usize = 100;
 
-pub const LAST_DRAWABLE_ROW: usize = 14;
+pub const LAST_DRAWABLE_ROW: usize = 13;
 
 pub const ParticleSystem = struct {
     particles: [ROWS][COLS]particle.Particle,
@@ -27,19 +27,23 @@ pub const ParticleSystem = struct {
     }
 
     pub fn withAsciiSeed(self: *ParticleSystem, buf: []u8) void {
-        var index: usize = 0;
-        for (0..ROWS) |i| {
-            for (0..COLS) |j| {
-                const ch = buf[index];
+        var row: usize = 0;
+        var col: usize = 0;
+
+        var iter = std.mem.split(u8, buf, "\n");
+        while (iter.next()) |s| {
+            col = 0;
+            for (s) |ch| {
                 if (ch != ' ') {
-                    self.particles[i][j].forceCharacter(ch);
+                    self.particles[row][col].forceCharacter(ch);
                 } else {
-                    if (i <= LAST_DRAWABLE_ROW) {
-                        self.particles[i][j].unfix();
+                    if (row <= LAST_DRAWABLE_ROW) {
+                        self.particles[row][col].unfix();
                     }
                 }
-                index += 1;
+                col += 1;
             }
+            row += 1;
         }
     }
 
@@ -57,6 +61,7 @@ pub const ParticleSystem = struct {
             for (0..COLS) |j| {
                 try self.particles[i][j].render();
             }
+            try output.stdout.print("\n", .{});
         }
         try output.flush();
     }

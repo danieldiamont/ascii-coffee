@@ -7,14 +7,14 @@ fn parseAscii(path: []const u8, buf: []u8) !void {
 }
 
 pub fn main() !void {
-    var buffer: [particleSystem.ROWS * particleSystem.COLS]u8 = undefined;
+
+    // account for newlines
+    var buffer: [particleSystem.ROWS * particleSystem.COLS + particleSystem.ROWS]u8 = undefined;
     try parseAscii("cup.txt", &buffer);
 
     var ps = particleSystem.ParticleSystem.init(42);
 
     ps.withAsciiSeed(&buffer);
-    //ps.updateAll();
-    //try ps.renderAll();
 
     while (true) {
         ps.updateAll();
