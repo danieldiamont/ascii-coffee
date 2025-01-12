@@ -7,8 +7,6 @@ pub const Particle = struct {
     col: f64,
     drow: f64,
     dcol: f64,
-    rowInit: f64,
-    colInit: f64,
     value: f64,
     ch: u8,
     rand: std.rand.DefaultPrng,
@@ -29,8 +27,6 @@ pub const Particle = struct {
             .col = _col,
             .drow = drow,
             .dcol = dcol,
-            .rowInit = _row,
-            .colInit = _col,
             .value = 0,
             .rand = std.rand.DefaultPrng.init(seed),
             .fixed = true,
@@ -52,8 +48,8 @@ pub const Particle = struct {
             const biased = convolve(self.col, f);
             self.value = biased;
             //std.log.debug("self.value {d}", .{self.value});
+            self.updatePosition();
         }
-        self.updatePosition();
     }
 
     pub fn unfix(self: *Particle) void {
@@ -67,15 +63,23 @@ pub const Particle = struct {
     pub fn map(f: f64) u8 {
         if (f < -2) {
             return ' ';
-        } else if (f >= -2 and f < -1) {
+        }
+        if (f >= -2 and f < -1) {
             return '{';
-        } else if (f >= -1 and f < 1) {
-            return '.';
-        } else if (f >= 1 and f < 2) {
-            return '}';
-        } else {
+        }
+        if (f >= -1 and f < -0.5) {
             return ' ';
         }
+        if (f >= -0.5 and f < 0.5) {
+            return '.';
+        }
+        if (f >= 0.5 and f < 1) {
+            return ' ';
+        }
+        if (f >= 1 and f < 2) {
+            return '}';
+        }
+        return ' ';
     }
 
     fn updatePosition(self: *Particle) void {
