@@ -1,19 +1,24 @@
 const std = @import("std");
-const ParticleSystem = @import("particleSystem.zig");
+const output = @import("output.zig");
+const particleSystem = @import("particleSystem.zig");
 
-const debug = std.debug.print;
-const stdout_file = std.io.getStdOut().writer();
-var bw = std.io.bufferedWriter(stdout_file);
-const stdout = bw.writer();
-
-const H = 50;
-const W = 50;
+fn parseAscii(path: []const u8, buf: []u8) !void {
+    _ = try std.fs.cwd().readFile(path, buf);
+}
 
 pub fn main() !void {
-    const rng = std.rand.DefaultPrng(42);
-    const ps = ParticleSystem.ParticleSystem.init(rng);
+    var buffer: [particleSystem.ROWS * particleSystem.COLS]u8 = undefined;
+    try parseAscii("cup.txt", &buffer);
 
+    var ps = particleSystem.ParticleSystem.init(42);
 
-    //var renderer = Renderer.init();
+    ps.withAsciiSeed(&buffer);
+    //ps.updateAll();
+    //try ps.renderAll();
 
+    while (true) {
+        ps.updateAll();
+        try ps.renderAll();
+        std.time.sleep(1_000_000_000);
+    }
 }
