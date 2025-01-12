@@ -11,17 +11,31 @@ pub const Particle = struct {
     colInit: f64,
     value: f64,
     ch: u8,
-    rng: std.Random,
+    rand: std.rand.DefaultPrng,
     fixed: bool,
 
-    pub fn init(row: usize, col: usize, seed: usize, fixed: bool) Particle {
+    pub fn init(
+        row: usize,
+        col: usize,
+        drow: f64,
+        dcol: f64,
+        seed: usize,
+    ) Particle {
         const _row: f64 = @floatFromInt(row);
         const _col: f64 = @floatFromInt(col);
 
-        var rand = std.rand.DefaultPrng.init(seed);
-        const rng = rand.random();
-
-        return Particle{ .row = _row, .col = _col, .drow = 0, .dcol = 0, .rowInit = _row, .colInit = _col, .value = 0, .rng = rng, .fixed = fixed, .ch = ' ' };
+        return Particle{
+            .row = _row,
+            .col = _col,
+            .drow = drow,
+            .dcol = dcol,
+            .rowInit = _row,
+            .colInit = _col,
+            .value = 0,
+            .rand = std.rand.DefaultPrng.init(seed),
+            .fixed = true,
+            .ch = ' ',
+        };
     }
 
     pub fn render(self: *Particle) u8 {
@@ -32,14 +46,13 @@ pub const Particle = struct {
     }
 
     pub fn update(self: *Particle) void {
+        const rng = self.rand.random();
         if (self.fixed == false) {
-            //self.updatePosition();
-
-            if (self.row == particleSystem.LAST_DRAWABLE_ROW) {
-                const f = self.rng.floatNorm(f64);
-                self.value = f;
-            }
-        } else {}
+            const f = rng.floatNorm(f64);
+            self.value = f;
+            //std.log.debug("self.value {d}", .{self.value});
+        }
+        self.updatePosition();
     }
 
     pub fn unfix(self: *Particle) void {
@@ -51,31 +64,26 @@ pub const Particle = struct {
     }
 
     pub fn map(f: f64) u8 {
-        if (f < -3) {
-            return ' ';
-        } else if (f >= -3 and f < -2) {
+        if (f < -2) {
             return '{';
         } else if (f >= -2 and f < -1) {
-            return '{';
-        } else if (f >= -1 and f < 1) {
             return '.';
-        } else if (f >= 1 and f < 2) {
-            return '}';
-        } else {
+        } else if (f >= -1 and f < 1) {
             return ' ';
+        } else if (f >= 1 and f < 2) {
+            return '.';
+        } else {
+            return '}';
         }
     }
 
     fn updatePosition(self: *Particle) void {
+        if (self.fixed) {
+            return;
+        }
+
         self.row = self.row + self.drow;
         self.col = self.col + self.dcol;
-
-        if (self.row < 0 or self.row > particleSystem.LAST_DRAWABLE_ROW) {
-            self.row = self.rowInit;
-        }
-        if (self.col < particleSystem.FIRST_DRAWABLE_COL or self.col > particleSystem.LAST_DRAWABLE_COL) {
-            self.col = self.colInit;
-        }
     }
 
     pub fn getRow(self: Particle) usize {

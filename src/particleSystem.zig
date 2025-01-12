@@ -5,34 +5,32 @@ const output = @import("output.zig");
 pub const ROWS: usize = 50;
 pub const COLS: usize = 100;
 
-pub const LAST_DRAWABLE_ROW: usize = 13;
+pub const LAST_DRAWABLE_ROW: usize = 14;
 pub const FIRST_DRAWABLE_COL: usize = 7;
 pub const LAST_DRAWABLE_COL: usize = 86;
 
 pub const ParticleSystem = struct {
-    particles: [ROWS * COLS]particle.Particle,
+    particles: std.ArrayList(particle.Particle),
     canvas: [ROWS][COLS]u8,
+    seed: usize,
+    speed: f64,
+    tick: usize,
+    interval: usize,
 
-    pub fn init(seed: usize) ParticleSystem {
-        var tmp: [ROWS * COLS]particle.Particle = undefined;
-        var canvas: [ROWS][COLS]u8 = undefined;
-        var rand = std.rand.DefaultPrng.init(seed);
-        const rng = rand.random();
-        for (0..ROWS) |i| {
-            for (0..COLS) |j| {
-                const _seed = rng.uintAtMost(usize, 255);
-                tmp[i * COLS + j] = particle.Particle.init(i, j, _seed, true);
-                canvas[i][j] = ' ';
-            }
-        }
+    pub fn init(seed: usize, speed: f64, alloc: std.mem.Allocator) ParticleSystem {
+        const interval: usize = @intFromFloat(@abs(1.0 / speed));
 
         return ParticleSystem{
-            .particles = tmp,
-            .canvas = canvas,
+            .particles = std.ArrayList(particle.Particle).init(alloc),
+            .canvas = undefined,
+            .seed = seed,
+            .speed = speed,
+            .tick = 0,
+            .interval = interval,
         };
     }
 
-    pub fn withAsciiSeed(self: *ParticleSystem, buf: []u8) void {
+    pub fn withAsciiSeed(self: *ParticleSystem, buf: []u8) !void {
         var row: usize = 0;
         var col: usize = 0;
 
@@ -41,11 +39,9 @@ pub const ParticleSystem = struct {
             col = 0;
             for (s) |ch| {
                 if (ch != ' ') {
-                    self.particles[(row * COLS) + col].forceCharacter(ch);
-                } else {
-                    if (filter(row, col)) {
-                        self.particles[(row * COLS) + col].unfix();
-                    }
+                    var p = particle.Particle.init(row, col, self.speed, 0.0, 42);
+                    p.forceCharacter(ch);
+                    try self.particles.append(p);
                 }
                 col += 1;
             }
@@ -53,16 +49,58 @@ pub const ParticleSystem = struct {
         }
     }
 
-    pub fn updateAll(self: *ParticleSystem) void {
-        for (&self.particles) |*p| {
+    pub fn updateAll(self: *ParticleSystem) !void {
+        // check for dead
+        var alive = std.ArrayList(particle.Particle).init(std.heap.page_allocator);
+        defer alive.deinit();
+        for (self.particles.items) |p| {
+            if (p.fixed == true) {
+                try alive.append(p);
+                continue;
+            }
+            if (!checkOutOfBounds(p)) {
+                try alive.append(p);
+            }
+        }
+
+        self.particles.clearAndFree();
+        for (alive.items) |p| {
+            try self.particles.append(p);
+        }
+
+        // spawn new particles
+        var rand = std.rand.DefaultPrng.init(self.seed);
+        const rng = rand.random();
+
+        if (self.tick == 0) {
+            for (FIRST_DRAWABLE_COL..LAST_DRAWABLE_COL) |col| {
+                const row = LAST_DRAWABLE_ROW;
+                const seed = rng.uintAtMost(usize, 100);
+                var p = particle.Particle.init(row, col, self.speed, 0.0, seed);
+                p.unfix();
+                try self.particles.append(p);
+            }
+        }
+
+        for (self.particles.items) |*p| {
             p.update();
         }
+
+        self.tick = (self.tick + 1) % self.interval;
     }
 
     pub fn renderAll(self: *ParticleSystem) !void {
         try output.stdout.print("\x1b[H", .{});
 
-        for (&self.particles) |*p| {
+        // clear canvas
+        for (0..ROWS) |r| {
+            for (0..COLS) |c| {
+                self.canvas[r][c] = ' ';
+            }
+        }
+
+        // render particles
+        for (self.particles.items) |*p| {
             const row = p.getRow();
             const col = p.getCol();
             const ch = p.render();
@@ -70,6 +108,7 @@ pub const ParticleSystem = struct {
             //std.log.debug("({d}, {d}) = {c}", .{ row, col, ch });
         }
 
+        // display canvas
         for (0..ROWS) |r| {
             for (0..COLS) |c| {
                 try output.stdout.print("{c}", .{self.canvas[r][c]});
@@ -80,8 +119,18 @@ pub const ParticleSystem = struct {
         try output.flush();
     }
 
-    fn filter(row: usize, col: usize) bool {
-        if (row <= LAST_DRAWABLE_ROW and col >= FIRST_DRAWABLE_COL and col < LAST_DRAWABLE_COL) {
+    fn filterSpawnRow(row: usize, col: usize) bool {
+        if (row == LAST_DRAWABLE_ROW and col >= FIRST_DRAWABLE_COL and col < LAST_DRAWABLE_COL) {
+            return true;
+        }
+        return false;
+    }
+
+    fn checkOutOfBounds(p: particle.Particle) bool {
+        if (p.row < 0 or p.row > LAST_DRAWABLE_ROW) {
+            return true;
+        }
+        if (p.col < FIRST_DRAWABLE_COL or p.col > LAST_DRAWABLE_COL) {
             return true;
         }
         return false;
