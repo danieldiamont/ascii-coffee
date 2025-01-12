@@ -6,6 +6,8 @@ pub const ROWS: usize = 50;
 pub const COLS: usize = 100;
 
 pub const LAST_DRAWABLE_ROW: usize = 13;
+pub const FIRST_DRAWABLE_COL: usize = 7;
+pub const LAST_DRAWABLE_COL: usize = 86;
 
 pub const ParticleSystem = struct {
     particles: [ROWS][COLS]particle.Particle,
@@ -37,7 +39,7 @@ pub const ParticleSystem = struct {
                 if (ch != ' ') {
                     self.particles[row][col].forceCharacter(ch);
                 } else {
-                    if (row <= LAST_DRAWABLE_ROW) {
+                    if (filter(row, col)) {
                         self.particles[row][col].unfix();
                     }
                 }
@@ -64,5 +66,12 @@ pub const ParticleSystem = struct {
             try output.stdout.print("\n", .{});
         }
         try output.flush();
+    }
+
+    fn filter(row: usize, col: usize) bool {
+        if (row <= LAST_DRAWABLE_ROW and col >= FIRST_DRAWABLE_COL and col < LAST_DRAWABLE_COL) {
+            return true;
+        }
+        return false;
     }
 };
