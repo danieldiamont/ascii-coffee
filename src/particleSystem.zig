@@ -2,6 +2,8 @@ const std = @import("std");
 const particle = @import("particle.zig");
 const output = @import("output.zig");
 
+const DLL = std.DoublyLinkedList(particle.Particle);
+
 pub const ROWS: usize = 50;
 pub const COLS: usize = 100;
 
@@ -11,25 +13,29 @@ pub const FIRST_DRAWABLE_COL: usize = 7;
 pub const LAST_DRAWABLE_COL: usize = 86;
 
 pub const ParticleSystem = struct {
-    particles: std.ArrayList(particle.Particle),
+    fixedParticles: std.ArrayList(particle.Particle),
+    particles: DLL,
     canvas: [ROWS][COLS]u8,
     seed: usize,
     speed: f64,
     tick: usize,
     interval: usize,
     rand: std.rand.DefaultPrng,
+    alloc: std.mem.Allocator,
 
     pub fn init(seed: usize, speed: f64, alloc: std.mem.Allocator) ParticleSystem {
         const interval: usize = @intFromFloat(@abs(1.0 / speed));
 
         return ParticleSystem{
-            .particles = std.ArrayList(particle.Particle).init(alloc),
             .canvas = undefined,
             .seed = seed,
             .speed = speed,
             .tick = 0,
             .interval = interval,
             .rand = std.rand.DefaultPrng.init(seed),
+            .fixedParticles = std.ArrayList(particle.Particle).init(alloc),
+            .particles = DLL{},
+            .alloc = alloc,
         };
     }
 
@@ -44,7 +50,7 @@ pub const ParticleSystem = struct {
                 if (ch != ' ') {
                     var p = particle.Particle.init(row, col, self.speed, 0.0, 42, 0.5);
                     p.forceCharacter(ch);
-                    try self.particles.append(p);
+                    try self.fixedParticles.append(p);
                 }
                 col += 1;
             }
@@ -54,21 +60,18 @@ pub const ParticleSystem = struct {
 
     pub fn updateAll(self: *ParticleSystem) !void {
         // check for dead
-        var alive = std.ArrayList(particle.Particle).init(std.heap.page_allocator);
-        defer alive.deinit();
-        for (self.particles.items) |p| {
-            if (p.fixed == true) {
-                try alive.append(p);
-                continue;
+        var it = self.particles.first;
+        while (it) |node| {
+            const tmp = node.next;
+            if (checkOutOfBounds(node.*.data)) {
+                const maybeNodePtr = self.particles.popFirst();
+                if (maybeNodePtr) |nodePtr| {
+                    self.alloc.destroy(nodePtr);
+                }
+                it = tmp;
+            } else {
+                break;
             }
-            if (!checkOutOfBounds(p)) {
-                try alive.append(p);
-            }
-        }
-
-        self.particles.clearAndFree();
-        for (alive.items) |p| {
-            try self.particles.append(p);
         }
 
         // spawn new particles
@@ -80,12 +83,16 @@ pub const ParticleSystem = struct {
                 const seed = rng.uintAtMost(usize, 1024);
                 var p = particle.Particle.init(row, col, self.speed, 0.0, seed, 0.5);
                 p.unfix();
-                try self.particles.append(p);
+
+                const nodePtr = try self.alloc.create(DLL.Node);
+                nodePtr.*.data = p;
+                self.particles.append(nodePtr);
             }
         }
 
-        for (self.particles.items) |*p| {
-            p.update();
+        it = self.particles.first;
+        while (it) |node| : (it = node.next) {
+            node.data.update();
         }
 
         self.tick = (self.tick + 1) % self.interval;
@@ -102,10 +109,18 @@ pub const ParticleSystem = struct {
         }
 
         // render particles
-        for (self.particles.items) |*p| {
+        for (self.fixedParticles.items) |*p| {
             const row = p.getRow();
             const col = p.getCol();
             const ch = p.render();
+            self.canvas[row][col] = ch;
+        }
+
+        var it = self.particles.first;
+        while (it) |node| : (it = node.next) {
+            const row = node.data.getRow();
+            const col = node.data.getCol();
+            const ch = node.data.render();
             self.canvas[row][col] = ch;
             //std.log.debug("({d}, {d}) = {c}", .{ row, col, ch });
         }
